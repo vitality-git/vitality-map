@@ -1,0 +1,12 @@
+RewriteEngine On
+
+RewriteRule ^verify/([A-Za-z0-9_-]+)/?$ verify.php?token=$1 [L,QSA]
+RewriteRule ^v/([A-Za-z0-9_-]+)/?$ verify.php?token=$1 [L,QSA]
+RewriteRule ^s/([A-Za-z0-9_-]+)/?$ api/status.php?token=$1 [L,QSA]
+RewriteRule ^issue/?$ issue.php [L]
+
+<IfModule mod_authz_core.c>
+	<Files "tokens.json">
+		Require all denied
+	</Files>
+</IfModule>
