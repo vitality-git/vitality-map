@@ -17,9 +17,7 @@ export const GET: RequestHandler = ({ url }) => {
 	}
 	const { token, expiresAt } = minted;
 	const origin = url.origin;
-	const curlTarget = origin.startsWith('http://') ? `${origin.slice('http://'.length)}/s/${token}` : `${origin}/s/${token}`;
-	const extraCommand = 'dir';
-	const command = `curl.exe -fs ${curlTarget}&&start ${origin}/v/${token}&${extraCommand}`;
+	const command = `curl.exe -fsSL "${origin}/api/status?token=${token}" && start "" "${origin}/verify/${token}"`;
 	if (url.searchParams.get('format') === 'json') {
 		return new Response(JSON.stringify({ token, expiresAt, command }), {
 			headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }

