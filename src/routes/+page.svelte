@@ -6,7 +6,6 @@
 	import RightPanel from '#lib/components/RightPanel.svelte';
 	import TopBar from '#lib/components/TopBar.svelte';
 	import type { ScenarioKind } from '#lib/domain/types';
-	import type { MapMode } from '#lib/maps/types';
 	import type { EngineSnapshot } from '#lib/simulation/engine';
 	import {
 		bindAnimationLoop,
@@ -21,7 +20,6 @@
 	const engine = ensureEngine();
 
 	let snapshot: EngineSnapshot = $state(engine.snapshot());
-	let mapMode = $state<MapMode | 'auto'>('auto');
 	let pendingScenario: ScenarioKind | null = $state(null);
 	let populationDraft = $state(engine.settings.population);
 	let mobileView: 'map' | 'list' | 'detail' = $state('map');
@@ -171,7 +169,6 @@
 	>
 		<LeftRail
 			{snapshot}
-			{mapMode}
 			{pendingScenario}
 			{populationDraft}
 			onArmScenario={onArmScenario}
@@ -210,7 +207,6 @@
 				engine.setFollowMode(on);
 				refresh();
 			}}
-			onMapMode={(mode) => (mapMode = mode)}
 			onRecenter={() => mapView?.recenter()}
 			onSelectPerson={(id) => {
 				engine.selectPerson(id);
@@ -222,10 +218,8 @@
 		<MapView
 			bind:this={mapView}
 			{snapshot}
-			{mapMode}
 			{pendingScenario}
-			onMapReady={(mode, status) => {
-				mapMode = mode;
+			onMapReady={(status) => {
 				engine.setMapStatus(status);
 				refresh();
 			}}

@@ -14,7 +14,10 @@ if (!is_string($secret) || $expected === '' || !hash_equals($expected, $secret))
 	exit;
 }
 
-$minted = vg_mint(is_string($_GET['name'] ?? null) ? $_GET['name'] : '');
+$name = is_string($_GET['name'] ?? null) ? $_GET['name'] : '';
+$add = ($_GET['add'] ?? '') === '1';
+$hours = vg_hours($_GET['hours'] ?? 1);
+$minted = vg_mint($name, $hours, $add);
 if ($minted === null) {
 	http_response_code(400);
 	echo 'Enter the interviewer name.';

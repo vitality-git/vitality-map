@@ -63,12 +63,18 @@ function vg_slug(string $name): ?string {
 	return $token;
 }
 
-function vg_mint(string $name): ?array {
-	$token = vg_slug($name);
-	if ($token === null) {
-		return null;
+function vg_hours(mixed $value): int {
+	$hours = is_numeric($value) ? (int) $value : 1;
+	if ($hours < 1) {
+		return 1;
 	}
-	$expires = (int) (microtime(true) * 1000) + 2 * 60 * 60 * 1000;
+	if ($hours > 24) {
+		return 24;
+	}
+	return $hours;
+}
+
+function vg_save(string $token, int $expires): void {
 	$store = vg_read();
 	$now = (int) (microtime(true) * 1000);
 	foreach ($store as $key => $exp) {
@@ -78,5 +84,23 @@ function vg_mint(string $name): ?array {
 	}
 	$store[$token] = $expires;
 	vg_write($store);
+}
+
+function vg_mint(string $name, int $hours = 1, bool $add = false): ?array {
+	$token = vg_slug($name);
+	if ($token === null) {
+		return null;
+	}
+	$now = (int) (microtime(true) * 1000);
+	$addMs = vg_hours($hours) * 60 * 60 * 1000;
+	if ($add) {
+		$store = vg_read();
+		$current = $store[$token] ?? 0;
+		$base = (is_int($current) || is_float($current)) && $current > $now ? (int) $current : $now;
+		$expires = $base + $addMs;
+	} else {
+		$expires = $now + 60 * 60 * 1000;
+	}
+	vg_save($token, $expires);
 	return ['token' => $token, 'expiresAt' => $expires];
 }

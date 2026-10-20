@@ -1,26 +1,35 @@
 <script lang="ts">
 	let secret = $state('');
 	let interviewer = $state('');
+	let hours = $state(1);
 	let busy = $state(false);
 	let error = $state('');
 	let token = $state('');
 	let expiresAt = $state(0);
 	let command = $state('');
 	let copied = $state(false);
+	let addedHours = $state(0);
 
 	const expiresLabel = $derived(
 		expiresAt ? new Date(expiresAt).toLocaleString(undefined, { hour: 'numeric', minute: '2-digit' }) : ''
 	);
+	const ready = $derived(secret.trim() !== '' && interviewer.trim() !== '');
 
-	async function createToken(event: SubmitEvent): Promise<void> {
-		event.preventDefault();
+	async function requestToken(add: boolean): Promise<void> {
 		error = '';
 		copied = false;
 		busy = true;
 		try {
-			const res = await fetch(
-				`/api/mint?format=json&secret=${encodeURIComponent(secret)}&name=${encodeURIComponent(interviewer)}`
-			);
+			const params = new URLSearchParams({
+				format: 'json',
+				secret,
+				name: interviewer
+			});
+			if (add) {
+				params.set('add', '1');
+				params.set('hours', String(hours));
+			}
+			const res = await fetch(`/api/mint?${params.toString()}`);
 			if (res.status === 400) {
 				error = 'Enter the interviewer name using letters or numbers.';
 				token = '';
@@ -39,11 +48,17 @@
 			token = data.token;
 			expiresAt = data.expiresAt;
 			command = data.command;
+			addedHours = add ? hours : 0;
 		} catch {
 			error = 'The token service did not respond.';
 		} finally {
 			busy = false;
 		}
+	}
+
+	function createToken(event: SubmitEvent): void {
+		event.preventDefault();
+		void requestToken(false);
 	}
 
 	async function copyCommand(): Promise<void> {
@@ -53,16 +68,16 @@
 </script>
 
 <svelte:head>
-	<title>Create a 2-hour token</title>
+	<title>Create a 1-hour token</title>
 </svelte:head>
 
 <main class="issue">
 	<form class="card" onsubmit={createToken}>
 		<p class="brand">Vitality Guard</p>
-		<h1>Create a 2-hour token</h1>
+		<h1>Create a 1-hour token</h1>
 		<p class="lead">
-			The pass is the interviewer’s name. It stops working two hours after it is created. Anyone else
-			still sees the landing page.
+			The pass is the interviewer’s name and lasts 1 hour. Add time here to keep the same pass open
+			longer. Anyone else still sees the landing page.
 		</p>
 		<label>
 			Interviewer name
@@ -85,9 +100,18 @@
 				bind:value={secret}
 			/>
 		</label>
-		<button class="btn btn-primary" type="submit" disabled={busy || secret.trim() === '' || interviewer.trim() === ''}>
-			{busy ? 'Creating…' : 'Create token'}
-		</button>
+		<label>
+			Hours to add
+			<input type="number" name="hours" min="1" max="24" step="1" bind:value={hours} />
+		</label>
+		<div class="actions">
+			<button class="btn btn-primary" type="submit" disabled={busy || !ready}>
+				{busy ? 'Working…' : 'Create 1-hour token'}
+			</button>
+			<button class="btn" type="button" disabled={busy || !ready} onclick={() => requestToken(true)}>
+				Add time
+			</button>
+		</div>
 		{#if error}
 			<p class="error" role="alert">{error}</p>
 		{/if}
@@ -96,7 +120,14 @@
 	{#if token}
 		<section class="card result" aria-live="polite">
 			<h2>Token for {token}</h2>
-			<p>Valid until {expiresLabel}. The same name can be issued again to start a new 2 hours.</p>
+			<p>
+				Valid until {expiresLabel}.
+				{#if addedHours > 0}
+					Added {addedHours} {addedHours === 1 ? 'hour' : 'hours'} to this pass.
+				{:else}
+					Creating this name again starts a fresh 1 hour.
+				{/if}
+			</p>
 			<p class="token">{token}</p>
 			<label>
 				Command
@@ -175,6 +206,12 @@
 
 	textarea {
 		resize: vertical;
+	}
+
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
 	}
 
 	.error {

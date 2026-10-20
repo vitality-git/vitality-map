@@ -1,6 +1,5 @@
 <script lang="ts">
 	import type { LayerVisibility, ScenarioKind } from '#lib/domain/types';
-	import type { MapMode } from '#lib/maps/types';
 	import type { EngineSnapshot } from '#lib/simulation/engine';
 
 	const LAYER_LABELS: Record<keyof LayerVisibility, string> = {
@@ -17,7 +16,6 @@
 
 	interface Props {
 		snapshot: EngineSnapshot;
-		mapMode: MapMode | 'auto';
 		pendingScenario: ScenarioKind | null;
 		populationDraft: number;
 		onArmScenario: (kind: ScenarioKind) => void;
@@ -30,7 +28,6 @@
 		onDiscovery: (m: number) => void;
 		onBenefitDelay: (on: boolean) => void;
 		onFollow: (on: boolean) => void;
-		onMapMode: (mode: MapMode) => void;
 		onRecenter: () => void;
 		onSelectPerson: (id: string) => void;
 		onSelectIncident: (id: string) => void;
@@ -38,7 +35,6 @@
 
 	let {
 		snapshot,
-		mapMode,
 		pendingScenario,
 		populationDraft,
 		onArmScenario,
@@ -51,7 +47,6 @@
 		onDiscovery,
 		onBenefitDelay,
 		onFollow,
-		onMapMode,
 		onRecenter,
 		onSelectPerson,
 		onSelectIncident
@@ -158,20 +153,7 @@
 			Follow selected incident
 		</label>
 
-		<h2 class="section-title">Map mode</h2>
 		<div class="btn-row">
-			<button
-				type="button"
-				class="btn"
-				class:active={mapMode === 'schematic'}
-				onclick={() => onMapMode('schematic')}>3D city</button
-			>
-			<button
-				type="button"
-				class="btn"
-				class:active={mapMode === 'google'}
-				onclick={() => onMapMode('google')}>Google map</button
-			>
 			<button type="button" class="btn" onclick={onRecenter}>Recenter</button>
 		</div>
 

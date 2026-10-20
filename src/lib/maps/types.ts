@@ -1,6 +1,6 @@
 import type { LatLng } from '#lib/domain/types';
 
-export type MapMode = 'schematic' | 'google';
+export type MapMode = 'city';
 
 export interface MarkerSpec {
 	id: string;

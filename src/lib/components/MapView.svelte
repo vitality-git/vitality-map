@@ -1,18 +1,16 @@
 <script lang="ts">
 	import { DEMO_AREA, NEIGHBORHOOD_ANCHORS } from '#lib/data/geo';
 	import type { Person, ScenarioKind } from '#lib/domain/types';
-	import { mountWithFallback } from '#lib/maps/create';
-	import { onGoogleMapsFailure } from '#lib/maps/google';
-	import type { MapAdapter, MapMode, MarkerSpec } from '#lib/maps/types';
+	import { mountCityMap } from '#lib/maps/create';
+	import type { MapAdapter, MarkerSpec } from '#lib/maps/types';
 	import type { EngineSnapshot } from '#lib/simulation/engine';
 	import { ensureEngine } from '#lib/stores/app';
 	import { onDestroy, onMount } from 'svelte';
 
 	interface Props {
 		snapshot: EngineSnapshot;
-		mapMode: MapMode | 'auto';
 		pendingScenario: ScenarioKind | null;
-		onMapReady?: (mode: MapMode, status: string | null) => void;
+		onMapReady?: (status: string | null) => void;
 		onSelectPerson: (id: string) => void;
 		onSelectFacility: (id: string) => void;
 		onSelectIncident: (id: string) => void;
@@ -22,7 +20,6 @@
 
 	let {
 		snapshot,
-		mapMode,
 		pendingScenario,
 		onMapReady,
 		onSelectPerson,
@@ -34,14 +31,12 @@
 
 	let host: HTMLDivElement | undefined = $state();
 	let adapter: MapAdapter | null = null;
-	let mountedMode: MapMode = 'schematic';
 	let lastRunId = -1;
 	let followSuspended = false;
 	let mountGen = 0;
 	let swallowMapClick = false;
 	let lastFollowAt = 0;
 	let disposePositions: (() => void) | undefined;
-	let disposeAuth: (() => void) | undefined;
 	let supportsTilt = $state(false);
 	let tiltOn = $state(true);
 
@@ -243,51 +238,40 @@
 		adapter.panTo(incident.position);
 	}
 
-	async function remount(mode: MapMode | 'auto'): Promise<void> {
+	async function mountMap(): Promise<void> {
 		if (!host) return;
 		const gen = ++mountGen;
 		adapter?.destroy();
 		adapter = null;
-		const result = await mountWithFallback(host, mode);
-		if (gen !== mountGen || !host) {
-			result.adapter.destroy();
-			return;
+		try {
+			const result = await mountCityMap(host);
+			if (gen !== mountGen || !host) {
+				result.adapter.destroy();
+				return;
+			}
+			adapter = result.adapter;
+			supportsTilt = typeof adapter.toggleTilt === 'function';
+			tiltOn = supportsTilt;
+			wire(adapter);
+			syncStatic(snapshot);
+			syncDynamic(snapshot);
+			adapter.fitBounds(DEMO_AREA.bounds);
+			onMapReady?.(result.statusMessage);
+		} catch (e) {
+			onMapReady?.(e instanceof Error ? e.message : 'The 3D city map did not load.');
 		}
-		adapter = result.adapter;
-		mountedMode = result.mode;
-		supportsTilt = typeof adapter.toggleTilt === 'function';
-		tiltOn = supportsTilt;
-		wire(adapter);
-		syncStatic(snapshot);
-		syncDynamic(snapshot);
-		onMapReady?.(result.mode, result.statusMessage);
 	}
 
 	onMount(() => {
 		disposePositions = ensureEngine().onPositions(() => paintPositions());
-		disposeAuth = onGoogleMapsFailure((message) => {
-			if (mountedMode !== 'google') return;
-			void remount('schematic').then(() => {
-				onMapReady?.('schematic', message);
-			});
-		});
-		void remount(mapMode);
+		void mountMap();
 	});
 
 	onDestroy(() => {
 		mountGen += 1;
 		disposePositions?.();
-		disposeAuth?.();
 		adapter?.destroy();
 		adapter = null;
-	});
-
-	$effect(() => {
-		// Remount when preferred mode changes
-		const mode = mapMode;
-		if (host && adapter && mode !== 'auto' && mode !== mountedMode) {
-			void remount(mode);
-		}
 	});
 
 	$effect(() => {

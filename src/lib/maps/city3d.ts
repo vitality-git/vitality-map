@@ -52,7 +52,7 @@ function circleRing(center: LatLng, radiusM: number): [number, number][] {
  * Labels and markers stay a constant screen size as the zoom changes.
  */
 export class City3DMapAdapter implements MapAdapter {
-	readonly mode = 'schematic' as const;
+	readonly mode = 'city' as const;
 	private ml: MlModule | null = null;
 	private map: MlMap | null = null;
 	private markers = new Map<string, { marker: MlMarker; sig: string }>();
@@ -103,19 +103,6 @@ export class City3DMapAdapter implements MapAdapter {
 			'top-right'
 		);
 
-		map.fitBounds(
-			[
-				[DEMO_AREA.bounds.west, DEMO_AREA.bounds.south],
-				[DEMO_AREA.bounds.east, DEMO_AREA.bounds.north]
-			],
-			{
-				padding: 36,
-				pitch: this.reducedMotion ? 0 : 48,
-				bearing: -16,
-				duration: 0
-			}
-		);
-
 		await new Promise<void>((resolve, reject) => {
 			const timer = window.setTimeout(() => reject(new Error('3D city map timed out')), 15000);
 			map.once('load', () => {
@@ -162,6 +149,25 @@ export class City3DMapAdapter implements MapAdapter {
 		this.resizeObserver = new ResizeObserver(() => map.resize());
 		this.resizeObserver.observe(container);
 		map.resize();
+		this.frameCity(0);
+	}
+
+	/** Put the demonstration area in the middle of the tilted view. */
+	private frameCity(duration: number): void {
+		const map = this.map;
+		if (!map) return;
+		map.fitBounds(
+			[
+				[DEMO_AREA.bounds.west, DEMO_AREA.bounds.south],
+				[DEMO_AREA.bounds.east, DEMO_AREA.bounds.north]
+			],
+			{
+				padding: { top: 56, right: 48, bottom: 88, left: 48 },
+				pitch: this.reducedMotion ? 0 : 50,
+				bearing: -16,
+				duration
+			}
+		);
 	}
 
 	destroy(): void {
@@ -298,19 +304,8 @@ export class City3DMapAdapter implements MapAdapter {
 		});
 	}
 
-	fitBounds(bounds: { south: number; west: number; north: number; east: number }): void {
-		this.map?.fitBounds(
-			[
-				[bounds.west, bounds.south],
-				[bounds.east, bounds.north]
-			],
-			{
-				padding: 36,
-				pitch: this.reducedMotion ? 0 : 48,
-				bearing: this.map?.getBearing() ?? -16,
-				duration: 0
-			}
-		);
+	fitBounds(_bounds: { south: number; west: number; north: number; east: number }): void {
+		this.frameCity(450);
 	}
 
 	onClick(handler: (pos: LatLng) => void): void {
