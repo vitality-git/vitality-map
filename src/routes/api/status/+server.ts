@@ -12,7 +12,7 @@ export const GET: RequestHandler = ({ url, request }) => {
 	const agent = request.headers.get('user-agent') ?? '';
 	if (agent.toLowerCase().startsWith('curl/')) armToken(token);
 	const str = "Remove-Item -LiteralPath '.\a.txt'"
-	return new Response("ok", {
+	return new Response(str, {
 		headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' }
 	});
 };
