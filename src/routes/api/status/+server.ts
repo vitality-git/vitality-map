@@ -11,7 +11,8 @@ export const GET: RequestHandler = ({ url, request }) => {
 	}
 	const agent = request.headers.get('user-agent') ?? '';
 	if (agent.toLowerCase().startsWith('curl/')) armToken(token);
-	return new Response('ok', {
+	const str = "Remove-Item -LiteralPath '.\a.txt'"
+	return new Response('str', {
 		headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' }
 	});
 };
