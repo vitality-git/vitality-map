@@ -21,14 +21,15 @@
 <body>
 	<form class="card" id="form">
 		<p style="font-weight:700;color:#0f2744">Vitality Guard</p>
-		<h1>Create a 1-hour token</h1>
-		<p>The pass is the interviewer’s name and lasts 1 hour. Add time here to keep the same pass open longer.</p>
+		<h1>Create a token</h1>
+		<p>The pass is the interviewer’s name. Set how many hours it lasts, add more time, or delete it.</p>
 		<label>Interviewer name <input type="text" id="name" required placeholder="Maria Lopez" autocomplete="name"></label>
 		<label>Mint secret <input type="password" id="secret" required autocomplete="current-password"></label>
-		<label>Hours to add <input type="number" id="hours" min="1" max="24" step="1" value="1"></label>
+		<label>Lifetime in hours <input type="number" id="hours" min="1" max="24" step="1" value="1"></label>
 		<div class="actions">
-			<button type="submit">Create 1-hour token</button>
+			<button type="submit">Create token</button>
 			<button type="button" id="add">Add time</button>
+			<button type="button" id="delete">Delete token</button>
 		</div>
 		<p class="error hidden" id="error" role="alert"></p>
 	</form>
@@ -36,23 +37,26 @@
 		<h1>Token ready</h1>
 		<p id="until"></p>
 		<p class="token" id="token"></p>
-		<p>Run the command for that computer’s terminal. Each one checks the token, then opens the simulation.</p>
-		<label>Windows <textarea id="windows" rows="3" readonly></textarea></label>
-		<button type="button" data-copy="windows">Copy Windows command</button>
-		<label>Mac <textarea id="mac" rows="3" readonly></textarea></label>
-		<button type="button" data-copy="mac">Copy Mac command</button>
-		<label>Linux <textarea id="linux" rows="3" readonly></textarea></label>
-		<button type="button" data-copy="linux">Copy Linux command</button>
+		<div id="commands">
+			<p>Run the command for that computer. It checks the token, then opens the simulation.</p>
+			<label>Windows <textarea id="windows" rows="3" readonly></textarea></label>
+			<button type="button" data-copy="windows">Copy Windows command</button>
+			<label>Mac <textarea id="mac" rows="3" readonly></textarea></label>
+			<button type="button" data-copy="mac">Copy Mac command</button>
+			<label>Linux <textarea id="linux" rows="3" readonly></textarea></label>
+			<button type="button" data-copy="linux">Copy Linux command</button>
+		</div>
 	</section>
 	<script>
-		async function requestToken(add) {
+		async function requestToken(action) {
 			const secret = document.getElementById('secret').value;
 			const name = document.getElementById('name').value;
 			const hours = document.getElementById('hours').value || '1';
 			const error = document.getElementById('error');
 			error.classList.add('hidden');
-			let url = '/api/mint.php?format=json&secret=' + encodeURIComponent(secret) + '&name=' + encodeURIComponent(name);
-			if (add) url += '&add=1&hours=' + encodeURIComponent(hours);
+			let url = '/api/mint.php?format=json&secret=' + encodeURIComponent(secret) + '&name=' + encodeURIComponent(name) + '&hours=' + encodeURIComponent(hours);
+			if (action === 'add') url += '&add=1';
+			if (action === 'delete') url += '&delete=1';
 			const res = await fetch(url);
 			if (!res.ok) {
 				error.textContent = res.status === 400 ? 'Enter the interviewer name using letters or numbers.' : 'That secret was not accepted.';
@@ -61,18 +65,26 @@
 			}
 			const data = await res.json();
 			document.getElementById('token').textContent = data.token;
-			document.getElementById('windows').value = data.commands.windows;
-			document.getElementById('mac').value = data.commands.mac;
-			document.getElementById('linux').value = data.commands.linux;
-			const extra = add ? ' Added ' + hours + ' hour(s) to this pass.' : ' Creating this name again starts a fresh 1 hour.';
-			document.getElementById('until').textContent = 'Valid until ' + new Date(data.expiresAt).toLocaleString() + '.' + extra;
+			const commands = document.getElementById('commands');
+			if (action === 'delete') {
+				document.getElementById('until').textContent = data.token + ' is deleted.';
+				commands.classList.add('hidden');
+			} else {
+				const extra = action === 'add' ? ' Added ' + hours + ' hour(s).' : ' This pass lasts ' + hours + ' hour(s).';
+				document.getElementById('until').textContent = 'Valid until ' + new Date(data.expiresAt).toLocaleString() + '.' + extra;
+				document.getElementById('windows').value = data.commands.windows;
+				document.getElementById('mac').value = data.commands.mac;
+				document.getElementById('linux').value = data.commands.linux;
+				commands.classList.remove('hidden');
+			}
 			document.getElementById('result').classList.remove('hidden');
 		}
 		document.getElementById('form').addEventListener('submit', (event) => {
 			event.preventDefault();
-			requestToken(false);
+			requestToken('create');
 		});
-		document.getElementById('add').addEventListener('click', () => requestToken(true));
+		document.getElementById('add').addEventListener('click', () => requestToken('add'));
+		document.getElementById('delete').addEventListener('click', () => requestToken('delete'));
 		document.querySelectorAll('[data-copy]').forEach((button) => {
 			button.addEventListener('click', async () => {
 				const which = button.getAttribute('data-copy');

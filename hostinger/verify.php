@@ -3,7 +3,7 @@ declare(strict_types=1);
 require __DIR__ . '/api/tokens.php';
 
 $token = $_GET['token'] ?? '';
-if (!vg_consume(is_string($token) ? $token : '')) {
+if (!vg_valid(is_string($token) ? $token : '')) {
 	header('Location: /', true, 302);
 	exit;
 }

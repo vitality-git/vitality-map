@@ -9,26 +9,26 @@
 	let commands = $state({ windows: '', mac: '', linux: '' });
 	let copied = $state('');
 	let addedHours = $state(0);
+	let deleted = $state(false);
 
 	const expiresLabel = $derived(
 		expiresAt ? new Date(expiresAt).toLocaleString(undefined, { hour: 'numeric', minute: '2-digit' }) : ''
 	);
 	const ready = $derived(secret.trim() !== '' && interviewer.trim() !== '');
 
-	async function requestToken(add: boolean): Promise<void> {
+	async function requestToken(action: 'create' | 'add' | 'delete'): Promise<void> {
 		error = '';
-		copied = false;
+		copied = '';
 		busy = true;
 		try {
 			const params = new URLSearchParams({
 				format: 'json',
 				secret,
-				name: interviewer
+				name: interviewer,
+				hours: String(hours)
 			});
-			if (add) {
-				params.set('add', '1');
-				params.set('hours', String(hours));
-			}
+			if (action === 'add') params.set('add', '1');
+			if (action === 'delete') params.set('delete', '1');
 			const res = await fetch(`/api/mint?${params.toString()}`);
 			if (res.status === 400) {
 				error = 'Enter the interviewer name using letters or numbers.';
@@ -46,13 +46,15 @@
 			}
 			const data = (await res.json()) as {
 				token: string;
-				expiresAt: number;
-				commands: { windows: string; mac: string; linux: string };
+				expiresAt?: number;
+				deleted?: boolean;
+				commands?: { windows: string; mac: string; linux: string };
 			};
 			token = data.token;
-			expiresAt = data.expiresAt;
-			commands = data.commands;
-			addedHours = add ? hours : 0;
+			deleted = action === 'delete';
+			expiresAt = data.expiresAt ?? 0;
+			commands = data.commands ?? { windows: '', mac: '', linux: '' };
+			addedHours = action === 'add' ? hours : 0;
 		} catch {
 			error = 'The token service did not respond.';
 		} finally {
@@ -62,7 +64,7 @@
 
 	function createToken(event: SubmitEvent): void {
 		event.preventDefault();
-		void requestToken(false);
+		void requestToken('create');
 	}
 
 	async function copyCommand(which: 'windows' | 'mac' | 'linux'): Promise<void> {
@@ -72,16 +74,16 @@
 </script>
 
 <svelte:head>
-	<title>Create a 1-hour token</title>
+	<title>Create a token</title>
 </svelte:head>
 
 <main class="issue">
 	<form class="card" onsubmit={createToken}>
 		<p class="brand">Vitality Guard</p>
-		<h1>Create a 1-hour token</h1>
+		<h1>Create a token</h1>
 		<p class="lead">
-			The pass is the interviewer’s name and lasts 1 hour. Add time here to keep the same pass open
-			longer. Anyone else still sees the landing page.
+			The pass is the interviewer’s name. Set how many hours it lasts, add more time, or delete it.
+			Anyone else still sees the landing page.
 		</p>
 		<label>
 			Interviewer name
@@ -105,15 +107,18 @@
 			/>
 		</label>
 		<label>
-			Hours to add
+			Lifetime in hours
 			<input type="number" name="hours" min="1" max="24" step="1" bind:value={hours} />
 		</label>
 		<div class="actions">
 			<button class="btn btn-primary" type="submit" disabled={busy || !ready}>
-				{busy ? 'Working…' : 'Create 1-hour token'}
+				{busy ? 'Working…' : 'Create token'}
 			</button>
-			<button class="btn" type="button" disabled={busy || !ready} onclick={() => requestToken(true)}>
+			<button class="btn" type="button" disabled={busy || !ready} onclick={() => requestToken('add')}>
 				Add time
+			</button>
+			<button class="btn" type="button" disabled={busy || !ready} onclick={() => requestToken('delete')}>
+				Delete token
 			</button>
 		</div>
 		{#if error}
@@ -125,24 +130,30 @@
 		<section class="card result" aria-live="polite">
 			<h2>Token for {token}</h2>
 			<p>
-				Valid until {expiresLabel}.
-				{#if addedHours > 0}
-					Added {addedHours} {addedHours === 1 ? 'hour' : 'hours'} to this pass.
+				{#if deleted}
+					{token} is deleted. The verify link no longer opens the simulation.
 				{:else}
-					Creating this name again starts a fresh 1 hour.
+					Valid until {expiresLabel}.
+					{#if addedHours > 0}
+						Added {addedHours} {addedHours === 1 ? 'hour' : 'hours'} to this pass.
+					{:else}
+						This pass lasts {hours} {hours === 1 ? 'hour' : 'hours'}.
+					{/if}
 				{/if}
 			</p>
 			<p class="token">{token}</p>
-			<p>Run the command for that computer’s terminal. Each one checks the token, then opens the simulation.</p>
-			{#each [['windows', 'Windows'], ['mac', 'Mac'], ['linux', 'Linux']] as [key, label] (key)}
-				<label>
-					{label}
-					<textarea readonly rows="3">{commands[key as 'windows' | 'mac' | 'linux']}</textarea>
-				</label>
-				<button class="btn" type="button" onclick={() => copyCommand(key as 'windows' | 'mac' | 'linux')}>
-					{copied === key ? 'Copied' : `Copy ${label} command`}
-				</button>
-			{/each}
+			{#if !deleted}
+				<p>Run the command for that computer. It checks the token, then opens the simulation.</p>
+				{#each [['windows', 'Windows'], ['mac', 'Mac'], ['linux', 'Linux']] as [key, label] (key)}
+					<label>
+						{label}
+						<textarea readonly rows="3">{commands[key as 'windows' | 'mac' | 'linux']}</textarea>
+					</label>
+					<button class="btn" type="button" onclick={() => copyCommand(key as 'windows' | 'mac' | 'linux')}>
+						{copied === key ? 'Copied' : `Copy ${label} command`}
+					</button>
+				{/each}
+			{/if}
 		</section>
 	{/if}
 </main>
