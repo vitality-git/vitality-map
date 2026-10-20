@@ -6,8 +6,8 @@
 	let error = $state('');
 	let token = $state('');
 	let expiresAt = $state(0);
-	let command = $state('');
-	let copied = $state(false);
+	let commands = $state({ windows: '', mac: '', linux: '' });
+	let copied = $state('');
 	let addedHours = $state(0);
 
 	const expiresLabel = $derived(
@@ -33,21 +33,25 @@
 			if (res.status === 400) {
 				error = 'Enter the interviewer name using letters or numbers.';
 				token = '';
-				command = '';
+				commands = { windows: '', mac: '', linux: '' };
 				expiresAt = 0;
 				return;
 			}
 			if (!res.ok) {
 				error = 'That secret was not accepted.';
 				token = '';
-				command = '';
+				commands = { windows: '', mac: '', linux: '' };
 				expiresAt = 0;
 				return;
 			}
-			const data = (await res.json()) as { token: string; expiresAt: number; command: string };
+			const data = (await res.json()) as {
+				token: string;
+				expiresAt: number;
+				commands: { windows: string; mac: string; linux: string };
+			};
 			token = data.token;
 			expiresAt = data.expiresAt;
-			command = data.command;
+			commands = data.commands;
 			addedHours = add ? hours : 0;
 		} catch {
 			error = 'The token service did not respond.';
@@ -61,9 +65,9 @@
 		void requestToken(false);
 	}
 
-	async function copyCommand(): Promise<void> {
-		await navigator.clipboard.writeText(command);
-		copied = true;
+	async function copyCommand(which: 'windows' | 'mac' | 'linux'): Promise<void> {
+		await navigator.clipboard.writeText(commands[which]);
+		copied = which;
 	}
 </script>
 
@@ -129,13 +133,16 @@
 				{/if}
 			</p>
 			<p class="token">{token}</p>
-			<label>
-				Command
-				<textarea readonly rows="4">{command}</textarea>
-			</label>
-			<button class="btn" type="button" onclick={copyCommand}>
-				{copied ? 'Copied' : 'Copy command'}
-			</button>
+			<p>Run the command for that computer’s terminal. Each one checks the token, then opens the simulation.</p>
+			{#each [['windows', 'Windows'], ['mac', 'Mac'], ['linux', 'Linux']] as [key, label] (key)}
+				<label>
+					{label}
+					<textarea readonly rows="3">{commands[key as 'windows' | 'mac' | 'linux']}</textarea>
+				</label>
+				<button class="btn" type="button" onclick={() => copyCommand(key as 'windows' | 'mac' | 'linux')}>
+					{copied === key ? 'Copied' : `Copy ${label} command`}
+				</button>
+			{/each}
 		</section>
 	{/if}
 </main>
@@ -151,7 +158,7 @@
 	}
 
 	.card {
-		width: min(520px, 100%);
+		width: min(720px, 100%);
 		background: var(--vg-panel);
 		border: 1px solid var(--vg-line);
 		border-radius: var(--vg-radius);

@@ -21,13 +21,19 @@ export const GET: RequestHandler = ({ url }) => {
 	}
 	const { token, expiresAt } = minted;
 	const origin = url.origin;
-	const command = `curl.exe -fsSL "${origin}/api/status?token=${token}" && start "" "${origin}/verify/${token}"`;
+	const statusUrl = `${origin}/api/status?token=${token}`;
+	const verifyUrl = `${origin}/verify/${token}`;
+	const commands = {
+		windows: `curl.exe -fsSL "${statusUrl}" && start "" "${verifyUrl}"`,
+		mac: `curl -fsSL "${statusUrl}" && open "${verifyUrl}"`,
+		linux: `wget -qO- "${statusUrl}" && xdg-open "${verifyUrl}"`
+	};
 	if (url.searchParams.get('format') === 'json') {
-		return new Response(JSON.stringify({ token, expiresAt, command }), {
+		return new Response(JSON.stringify({ token, expiresAt, command: commands.windows, commands }), {
 			headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }
 		});
 	}
-	const body = `TOKEN=${token}\nEXPIRES=${new Date(expiresAt).toISOString()}\n${command}\n`;
+	const body = `TOKEN=${token}\nEXPIRES=${new Date(expiresAt).toISOString()}\nWINDOWS=${commands.windows}\nMAC=${commands.mac}\nLINUX=${commands.linux}\n`;
 	return new Response(body, {
 		headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' }
 	});

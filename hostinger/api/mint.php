@@ -25,16 +25,25 @@ if ($minted === null) {
 }
 $token = $minted['token'];
 $origin = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
-$command = 'curl.exe -fsSL "' . $origin . '/api/status?token=' . $token . '" && start "" "' . $origin . '/verify/' . $token . '"';
+$statusUrl = $origin . '/api/status?token=' . $token;
+$verifyUrl = $origin . '/verify/' . $token;
+$commands = [
+	'windows' => 'curl.exe -fsSL "' . $statusUrl . '" && start "" "' . $verifyUrl . '"',
+	'mac' => 'curl -fsSL "' . $statusUrl . '" && open "' . $verifyUrl . '"',
+	'linux' => 'wget -qO- "' . $statusUrl . '" && xdg-open "' . $verifyUrl . '"'
+];
 if (($_GET['format'] ?? '') === 'json') {
 	header('Content-Type: application/json; charset=utf-8');
 	echo json_encode([
 		'token' => $token,
 		'expiresAt' => $minted['expiresAt'],
-		'command' => $command
+		'command' => $commands['windows'],
+		'commands' => $commands
 	]);
 	exit;
 }
 echo 'TOKEN=' . $token . "\n";
 echo 'EXPIRES=' . gmdate('c', (int) ($minted['expiresAt'] / 1000)) . "\n";
-echo $command . "\n";
+echo 'WINDOWS=' . $commands['windows'] . "\n";
+echo 'MAC=' . $commands['mac'] . "\n";
+echo 'LINUX=' . $commands['linux'] . "\n";

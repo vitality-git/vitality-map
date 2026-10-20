@@ -6,7 +6,7 @@
 	<title>Create a 1-hour token</title>
 	<style>
 		body { margin: 0; min-height: 100vh; display: grid; align-content: center; justify-items: center; gap: 1rem; padding: 2rem 1rem; font-family: "Source Sans 3", system-ui, sans-serif; background: #e9eef3; color: #14233a; }
-		.card { width: min(520px, 100%); background: #fff; border: 1px solid #d5dde6; border-radius: 8px; padding: 1.25rem 1.35rem 1.4rem; }
+		.card { width: min(720px, 100%); background: #fff; border: 1px solid #d5dde6; border-radius: 8px; padding: 1.25rem 1.35rem 1.4rem; }
 		h1 { margin: 0.35rem 0 0.5rem; color: #0f2744; font-size: 1.45rem; }
 		p { color: #5c6b7a; line-height: 1.45; }
 		label { display: grid; gap: 0.35rem; margin: 1rem 0; font-size: 0.85rem; font-weight: 600; color: #0f2744; }
@@ -36,8 +36,13 @@
 		<h1>Token ready</h1>
 		<p id="until"></p>
 		<p class="token" id="token"></p>
-		<label>Command <textarea id="command" rows="4" readonly></textarea></label>
-		<button type="button" id="copy">Copy command</button>
+		<p>Run the command for that computer’s terminal. Each one checks the token, then opens the simulation.</p>
+		<label>Windows <textarea id="windows" rows="3" readonly></textarea></label>
+		<button type="button" data-copy="windows">Copy Windows command</button>
+		<label>Mac <textarea id="mac" rows="3" readonly></textarea></label>
+		<button type="button" data-copy="mac">Copy Mac command</button>
+		<label>Linux <textarea id="linux" rows="3" readonly></textarea></label>
+		<button type="button" data-copy="linux">Copy Linux command</button>
 	</section>
 	<script>
 		async function requestToken(add) {
@@ -56,7 +61,9 @@
 			}
 			const data = await res.json();
 			document.getElementById('token').textContent = data.token;
-			document.getElementById('command').value = data.command;
+			document.getElementById('windows').value = data.commands.windows;
+			document.getElementById('mac').value = data.commands.mac;
+			document.getElementById('linux').value = data.commands.linux;
 			const extra = add ? ' Added ' + hours + ' hour(s) to this pass.' : ' Creating this name again starts a fresh 1 hour.';
 			document.getElementById('until').textContent = 'Valid until ' + new Date(data.expiresAt).toLocaleString() + '.' + extra;
 			document.getElementById('result').classList.remove('hidden');
@@ -66,9 +73,12 @@
 			requestToken(false);
 		});
 		document.getElementById('add').addEventListener('click', () => requestToken(true));
-		document.getElementById('copy').addEventListener('click', async () => {
-			await navigator.clipboard.writeText(document.getElementById('command').value);
-			document.getElementById('copy').textContent = 'Copied';
+		document.querySelectorAll('[data-copy]').forEach((button) => {
+			button.addEventListener('click', async () => {
+				const which = button.getAttribute('data-copy');
+				await navigator.clipboard.writeText(document.getElementById(which).value);
+				button.textContent = 'Copied';
+			});
 		});
 	</script>
 </body>
