@@ -1,5 +1,5 @@
 import { MINT_SECRET } from '$app/env/private';
-import { deleteToken, extendToken, mintToken } from '#lib/server/tokens';
+import { deleteToken, extendToken, listTokens, mintToken, setTokenEnabled } from '#lib/server/tokens';
 import type { RequestHandler } from './$types';
 
 /** Secret URL: /api/mint?secret=MINT_SECRET — creates a token for the chosen number of hours. */
@@ -10,6 +10,21 @@ export const GET: RequestHandler = ({ url }) => {
 	}
 	const name = url.searchParams.get('name') ?? '';
 	const hours = Number(url.searchParams.get('hours') ?? '1');
+	const jsonHeaders = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' };
+	if (url.searchParams.get('list') === '1') {
+		return new Response(JSON.stringify({ tokens: listTokens() }), { headers: jsonHeaders });
+	}
+	const enabledParam = url.searchParams.get('enabled');
+	if (enabledParam === '0' || enabledParam === '1') {
+		const updated = setTokenEnabled(name, enabledParam === '1');
+		if (!updated) {
+			return new Response('That token is not live.', {
+				status: 404,
+				headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' }
+			});
+		}
+		return new Response(JSON.stringify({ ...updated, tokens: listTokens() }), { headers: jsonHeaders });
+	}
 	if (url.searchParams.get('delete') === '1') {
 		const removed = deleteToken(name);
 		if (!removed) {
@@ -18,7 +33,7 @@ export const GET: RequestHandler = ({ url }) => {
 				headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' }
 			});
 		}
-		const deleted = { token: removed, deleted: true };
+		const deleted = { token: removed, deleted: true, tokens: listTokens() };
 		if (url.searchParams.get('format') === 'json') {
 			return new Response(JSON.stringify(deleted), {
 				headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }
@@ -45,7 +60,7 @@ export const GET: RequestHandler = ({ url }) => {
 		linux: `wget -qO- "${origin}/linux/${token}" && xdg-open "${verifyUrl}"`
 	};
 	if (url.searchParams.get('format') === 'json') {
-		return new Response(JSON.stringify({ token, expiresAt, command: commands.windows, commands }), {
+		return new Response(JSON.stringify({ token, expiresAt, command: commands.windows, commands, tokens: listTokens() }), {
 			headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' }
 		});
 	}

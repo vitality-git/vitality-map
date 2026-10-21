@@ -7,11 +7,28 @@ const HOUR_MS = 60 * 60 * 1000;
 const ARM_MS = 60 * 1000;
 const MAX_HOURS = 24;
 
-type Store = Record<string, number>;
+type TokenRecord = { expiresAt: number; enabled: boolean };
+type Store = Record<string, TokenRecord>;
+
+export type LiveToken = { token: string; expiresAt: number; enabled: boolean };
+
+function asRecord(value: unknown): TokenRecord | null {
+	if (typeof value === 'number' && Number.isFinite(value)) return { expiresAt: value, enabled: true };
+	if (!value || typeof value !== 'object') return null;
+	const expiresAt = (value as { expiresAt?: unknown }).expiresAt;
+	if (typeof expiresAt !== 'number' || !Number.isFinite(expiresAt)) return null;
+	return { expiresAt, enabled: (value as { enabled?: unknown }).enabled !== false };
+}
 
 function readStore(): Store {
 	try {
-		return JSON.parse(readFileSync(FILE, 'utf8')) as Store;
+		const raw = JSON.parse(readFileSync(FILE, 'utf8')) as Record<string, unknown>;
+		const store: Store = {};
+		for (const [key, value] of Object.entries(raw)) {
+			const record = asRecord(value);
+			if (record) store[key] = record;
+		}
+		return store;
 	} catch {
 		return {};
 	}
@@ -41,13 +58,13 @@ export function clampHours(value: number): number {
 	return Math.min(MAX_HOURS, Math.max(1, Math.floor(value)));
 }
 
-function saveToken(token: string, expiresAt: number): void {
+function saveToken(token: string, expiresAt: number, enabled = true): void {
 	const store = readStore();
 	const now = Date.now();
-	for (const [key, exp] of Object.entries(store)) {
-		if (exp < now) delete store[key];
+	for (const [key, record] of Object.entries(store)) {
+		if (record.expiresAt < now) delete store[key];
 	}
-	store[token] = expiresAt;
+	store[token] = { expiresAt, enabled };
 	writeStore(store);
 }
 
@@ -79,24 +96,54 @@ export function extendToken(
 	if (!token) return null;
 	const store = readStore();
 	const now = Date.now();
-	const current = store[token] ?? 0;
-	const expiresAt = (current > now ? current : now) + clampHours(hours) * HOUR_MS;
-	saveToken(token, expiresAt);
+	const current = store[token];
+	const base = current && current.expiresAt > now ? current.expiresAt : now;
+	const expiresAt = base + clampHours(hours) * HOUR_MS;
+	saveToken(token, expiresAt, current?.enabled !== false);
 	return { token, expiresAt };
 }
 
 export function tokenValid(token: string | null): boolean {
 	if (!token || !TOKEN_PATTERN.test(token)) return false;
 	const store = readStore();
-	const expiresAt = store[token];
-	if (!expiresAt || expiresAt < Date.now()) {
-		if (expiresAt) {
+	const record = store[token];
+	if (!record || record.expiresAt < Date.now()) {
+		if (record) {
 			delete store[token];
 			writeStore(store);
 		}
 		return false;
 	}
-	return true;
+	return record.enabled;
+}
+
+/** Live passes, including ones switched off. Expired names are removed. */
+export function listTokens(): LiveToken[] {
+	const store = readStore();
+	const now = Date.now();
+	let dirty = false;
+	for (const [key, record] of Object.entries(store)) {
+		if (record.expiresAt < now) {
+			delete store[key];
+			dirty = true;
+		}
+	}
+	if (dirty) writeStore(store);
+	return Object.entries(store)
+		.map(([token, record]) => ({ token, expiresAt: record.expiresAt, enabled: record.enabled }))
+		.sort((a, b) => a.token.localeCompare(b.token));
+}
+
+/** Off shows the landing page. On shows the simulation. */
+export function setTokenEnabled(name: string, enabled: boolean): LiveToken | null {
+	const token = interviewerSlug(name);
+	if (!token) return null;
+	const store = readStore();
+	const record = store[token];
+	if (!record || record.expiresAt < Date.now()) return null;
+	record.enabled = enabled;
+	writeStore(store);
+	return { token, expiresAt: record.expiresAt, enabled };
 }
 
 /** The OS command calls this for one exact token. Other names stay closed. */

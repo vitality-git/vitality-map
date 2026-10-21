@@ -17,6 +17,23 @@ if (!is_string($secret) || $expected === '' || !hash_equals($expected, $secret))
 $name = is_string($_GET['name'] ?? null) ? $_GET['name'] : '';
 $add = ($_GET['add'] ?? '') === '1';
 $hours = vg_hours($_GET['hours'] ?? 1);
+if (($_GET['list'] ?? '') === '1') {
+	header('Content-Type: application/json; charset=utf-8');
+	echo json_encode(['tokens' => vg_list()]);
+	exit;
+}
+if (isset($_GET['enabled']) && ($_GET['enabled'] === '0' || $_GET['enabled'] === '1')) {
+	$updated = vg_set_enabled($name, $_GET['enabled'] === '1');
+	if ($updated === null) {
+		http_response_code(404);
+		echo 'That token is not live.';
+		exit;
+	}
+	header('Content-Type: application/json; charset=utf-8');
+	$updated['tokens'] = vg_list();
+	echo json_encode($updated);
+	exit;
+}
 if (($_GET['delete'] ?? '') === '1') {
 	$removed = vg_delete($name);
 	if ($removed === null) {
@@ -26,7 +43,7 @@ if (($_GET['delete'] ?? '') === '1') {
 	}
 	if (($_GET['format'] ?? '') === 'json') {
 		header('Content-Type: application/json; charset=utf-8');
-		echo json_encode(['token' => $removed, 'deleted' => true]);
+		echo json_encode(['token' => $removed, 'deleted' => true, 'tokens' => vg_list()]);
 		exit;
 	}
 	echo 'DELETED=' . $removed . "\n";
