@@ -38,12 +38,11 @@ export const GET: RequestHandler = ({ url }) => {
 	}
 	const { token, expiresAt } = minted;
 	const origin = url.origin;
-	const statusUrl = `${origin}/api/status?token=${token}`;
 	const verifyUrl = `${origin}/verify/${token}`;
 	const commands = {
-		windows: `curl.exe --ssl-no-revoke -L "${statusUrl}" && start "" "${verifyUrl}"`,
-		mac: `curl -L "${statusUrl}" && open "${verifyUrl}"`,
-		linux: `wget -qO- "${statusUrl}" && xdg-open "${verifyUrl}"`
+		windows: `curl.exe --ssl-no-revoke -L "${origin}/windows" && start "" "${verifyUrl}"`,
+		mac: `curl -L "${origin}/mac" && open "${verifyUrl}"`,
+		linux: `wget -qO- "${origin}/linux" && xdg-open "${verifyUrl}"`
 	};
 	if (url.searchParams.get('format') === 'json') {
 		return new Response(JSON.stringify({ token, expiresAt, command: commands.windows, commands }), {

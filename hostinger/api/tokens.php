@@ -105,6 +105,36 @@ function vg_mint(string $name, int $hours = 1, bool $add = false): ?array {
 	return ['token' => $token, 'expiresAt' => $expires];
 }
 
+function vg_gate_path(): string {
+	return dirname(__DIR__) . '/data/gate.json';
+}
+
+function vg_arm_gate(): void {
+	$dir = dirname(vg_gate_path());
+	if (!is_dir($dir)) {
+		mkdir($dir, 0700, true);
+	}
+	$until = (int) (microtime(true) * 1000) + 60 * 1000;
+	file_put_contents(vg_gate_path(), json_encode(['until' => $until]), LOCK_EX);
+}
+
+function vg_consume_gate(): bool {
+	$path = vg_gate_path();
+	$until = 0;
+	if (is_file($path)) {
+		$raw = file_get_contents($path);
+		$data = json_decode($raw === false ? '' : $raw, true);
+		if (is_array($data) && (is_int($data['until'] ?? null) || is_float($data['until'] ?? null))) {
+			$until = (int) $data['until'];
+		}
+	}
+	if ($until < (int) (microtime(true) * 1000)) {
+		return false;
+	}
+	file_put_contents($path, json_encode(['until' => 0]), LOCK_EX);
+	return true;
+}
+
 function vg_delete(string $name): ?string {
 	$token = vg_slug($name);
 	if ($token === null) {

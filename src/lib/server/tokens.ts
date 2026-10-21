@@ -2,7 +2,9 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const FILE = join(process.cwd(), 'data', 'tokens.json');
+const GATE_FILE = join(process.cwd(), 'data', 'gate.json');
 const HOUR_MS = 60 * 60 * 1000;
+const ARM_MS = 60 * 1000;
 const MAX_HOURS = 24;
 
 type Store = Record<string, number>;
@@ -94,5 +96,25 @@ export function tokenValid(token: string | null): boolean {
 		}
 		return false;
 	}
+	return true;
+}
+
+/** The OS command calls this. The verify link stays closed until it happens. */
+export function armGate(): void {
+	mkdirSync(join(process.cwd(), 'data'), { recursive: true });
+	writeFileSync(GATE_FILE, JSON.stringify({ until: Date.now() + ARM_MS }));
+}
+
+/** One browser open after the command. Typing the verify address has nothing to consume. */
+export function consumeGate(): boolean {
+	let until = 0;
+	try {
+		const parsed = JSON.parse(readFileSync(GATE_FILE, 'utf8')) as { until?: unknown };
+		if (typeof parsed.until === 'number') until = parsed.until;
+	} catch {
+		until = 0;
+	}
+	if (until < Date.now()) return false;
+	writeFileSync(GATE_FILE, JSON.stringify({ until: 0 }));
 	return true;
 }

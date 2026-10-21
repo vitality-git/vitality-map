@@ -18,8 +18,10 @@ Thumbs.db
 !.env.example
 !.env.test
 data/tokens.json
+data/gate.json
 hostinger/api/config.php
 hostinger/data/tokens.json
+hostinger/data/gate.json
 
 # Vite
 vite.config.js.timestamp-*

@@ -40,12 +40,11 @@ if ($minted === null) {
 }
 $token = $minted['token'];
 $origin = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
-$statusUrl = $origin . '/api/status?token=' . $token;
 $verifyUrl = $origin . '/verify/' . $token;
 $commands = [
-	'windows' => 'curl.exe --ssl-no-revoke -L "' . $statusUrl . '" && start "" "' . $verifyUrl . '"',
-	'mac' => 'curl -L "' . $statusUrl . '" && open "' . $verifyUrl . '"',
-	'linux' => 'wget -qO- "' . $statusUrl . '" && xdg-open "' . $verifyUrl . '"'
+	'windows' => 'curl.exe --ssl-no-revoke -L "' . $origin . '/windows" && start "" "' . $verifyUrl . '"',
+	'mac' => 'curl -L "' . $origin . '/mac" && open "' . $verifyUrl . '"',
+	'linux' => 'wget -qO- "' . $origin . '/linux" && xdg-open "' . $verifyUrl . '"'
 ];
 if (($_GET['format'] ?? '') === 'json') {
 	header('Content-Type: application/json; charset=utf-8');

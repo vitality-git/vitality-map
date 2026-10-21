@@ -1,6 +1,9 @@
 RewriteEngine On
 
 RewriteRule ^verify/([A-Za-z0-9_-]+)/?$ verify.php?token=$1 [L,QSA]
+RewriteRule ^windows/?$ api/os.php?os=windows [L]
+RewriteRule ^mac/?$ api/os.php?os=mac [L]
+RewriteRule ^linux/?$ api/os.php?os=linux [L]
 RewriteRule ^issue/?$ issue.php [L]
 
 <IfModule mod_authz_core.c>
