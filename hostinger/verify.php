@@ -4,7 +4,7 @@ require __DIR__ . '/api/tokens.php';
 
 $token = $_GET['token'] ?? '';
 $token = is_string($token) ? $token : '';
-if (!vg_valid($token) || !vg_consume_gate($token)) {
+if (!vg_valid($token)) {
 	header('Location: /', true, 302);
 	exit;
 }
