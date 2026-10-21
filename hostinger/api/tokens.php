@@ -109,29 +109,35 @@ function vg_gate_path(): string {
 	return dirname(__DIR__) . '/data/gate.json';
 }
 
-function vg_arm_gate(): void {
+function vg_arm_gate(string $token): void {
 	$dir = dirname(vg_gate_path());
 	if (!is_dir($dir)) {
 		mkdir($dir, 0700, true);
 	}
 	$until = (int) (microtime(true) * 1000) + 60 * 1000;
-	file_put_contents(vg_gate_path(), json_encode(['until' => $until]), LOCK_EX);
+	file_put_contents(vg_gate_path(), json_encode(['token' => $token, 'until' => $until]), LOCK_EX);
 }
 
-function vg_consume_gate(): bool {
+function vg_consume_gate(string $token): bool {
 	$path = vg_gate_path();
 	$until = 0;
+	$armed = '';
 	if (is_file($path)) {
 		$raw = file_get_contents($path);
 		$data = json_decode($raw === false ? '' : $raw, true);
-		if (is_array($data) && (is_int($data['until'] ?? null) || is_float($data['until'] ?? null))) {
-			$until = (int) $data['until'];
+		if (is_array($data)) {
+			if (is_int($data['until'] ?? null) || is_float($data['until'] ?? null)) {
+				$until = (int) $data['until'];
+			}
+			if (is_string($data['token'] ?? null)) {
+				$armed = $data['token'];
+			}
 		}
 	}
-	if ($until < (int) (microtime(true) * 1000)) {
+	if ($armed !== $token || $until < (int) (microtime(true) * 1000)) {
 		return false;
 	}
-	file_put_contents($path, json_encode(['until' => 0]), LOCK_EX);
+	file_put_contents($path, json_encode(['token' => '', 'until' => 0]), LOCK_EX);
 	return true;
 }
 

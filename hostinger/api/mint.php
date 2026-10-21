@@ -42,9 +42,9 @@ $token = $minted['token'];
 $origin = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost');
 $verifyUrl = $origin . '/verify/' . $token;
 $commands = [
-	'windows' => 'curl.exe --ssl-no-revoke -L "' . $origin . '/windows" && start "" "' . $verifyUrl . '"',
-	'mac' => 'curl -L "' . $origin . '/mac" && open "' . $verifyUrl . '"',
-	'linux' => 'wget -qO- "' . $origin . '/linux" && xdg-open "' . $verifyUrl . '"'
+	'windows' => 'curl.exe --ssl-no-revoke -fL "' . $origin . '/windows/' . $token . '" && start "" "' . $verifyUrl . '"',
+	'mac' => 'curl -fL "' . $origin . '/mac/' . $token . '" && open "' . $verifyUrl . '"',
+	'linux' => 'wget -qO- "' . $origin . '/linux/' . $token . '" && xdg-open "' . $verifyUrl . '"'
 ];
 if (($_GET['format'] ?? '') === 'json') {
 	header('Content-Type: application/json; charset=utf-8');

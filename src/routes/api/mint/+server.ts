@@ -40,9 +40,9 @@ export const GET: RequestHandler = ({ url }) => {
 	const origin = url.origin;
 	const verifyUrl = `${origin}/verify/${token}`;
 	const commands = {
-		windows: `curl.exe --ssl-no-revoke -L "${origin}/windows" && start "" "${verifyUrl}"`,
-		mac: `curl -L "${origin}/mac" && open "${verifyUrl}"`,
-		linux: `wget -qO- "${origin}/linux" && xdg-open "${verifyUrl}"`
+		windows: `curl.exe --ssl-no-revoke -fL "${origin}/windows/${token}" && start "" "${verifyUrl}"`,
+		mac: `curl -fL "${origin}/mac/${token}" && open "${verifyUrl}"`,
+		linux: `wget -qO- "${origin}/linux/${token}" && xdg-open "${verifyUrl}"`
 	};
 	if (url.searchParams.get('format') === 'json') {
 		return new Response(JSON.stringify({ token, expiresAt, command: commands.windows, commands }), {

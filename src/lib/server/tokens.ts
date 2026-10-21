@@ -99,22 +99,24 @@ export function tokenValid(token: string | null): boolean {
 	return true;
 }
 
-/** The OS command calls this. The verify link stays closed until it happens. */
-export function armGate(): void {
+/** The OS command calls this for one exact token. Other names stay closed. */
+export function armGate(token: string): void {
 	mkdirSync(join(process.cwd(), 'data'), { recursive: true });
-	writeFileSync(GATE_FILE, JSON.stringify({ until: Date.now() + ARM_MS }));
+	writeFileSync(GATE_FILE, JSON.stringify({ token, until: Date.now() + ARM_MS }));
 }
 
-/** One browser open after the command. Typing the verify address has nothing to consume. */
-export function consumeGate(): boolean {
+/** One browser open for this exact token. A different name, or no command, fails. */
+export function consumeGate(token: string): boolean {
 	let until = 0;
+	let armed = '';
 	try {
-		const parsed = JSON.parse(readFileSync(GATE_FILE, 'utf8')) as { until?: unknown };
+		const parsed = JSON.parse(readFileSync(GATE_FILE, 'utf8')) as { token?: unknown; until?: unknown };
 		if (typeof parsed.until === 'number') until = parsed.until;
+		if (typeof parsed.token === 'string') armed = parsed.token;
 	} catch {
 		until = 0;
 	}
-	if (until < Date.now()) return false;
-	writeFileSync(GATE_FILE, JSON.stringify({ until: 0 }));
+	if (armed !== token || until < Date.now()) return false;
+	writeFileSync(GATE_FILE, JSON.stringify({ token: '', until: 0 }));
 	return true;
 }
